@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Receive Messages</title>
+</head>
+<body>
+<h1>Messages</h1>
+<ul id="messages"></ul>
+
+<script>
+    const socket = new WebSocket("ws://192.168.71.4:8080/text");
+
+    socket.onmessage = function (event) {
+        const messageList = document.getElementById("messages");
+        const newMessage = document.createElement("li");
+        newMessage.textContent = event.data;
+        messageList.appendChild(newMessage);
+    };
+</script>
+</body>
+</html>

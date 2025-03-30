@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Send Message</title>
+</head>
+<body>
+<h1>Send a Message</h1>
+<form id="messageForm">
+    <input type="text" id="message" placeholder="Type your message" />
+    <button type="submit">Send</button>
+</form>
+
+<script>
+    const socket = new WebSocket("ws://192.168.71.4:8080/text");
+
+    document.getElementById("messageForm").onsubmit = function (e) {
+        e.preventDefault();
+        const message = document.getElementById("message").value;
+        socket.send(message);
+        document.getElementById("message").value = "";
+    };
+</script>
+</body>
+</html>
