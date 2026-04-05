@@ -1,0 +1,25 @@
+spring:
+  application:
+    name: zeChat
+  ai:
+    openai:
+      api-key: none        # disable auto-configured ChatClient
+      chat:
+        enabled: false
+
+ai:
+  chat:
+    providers:
+      deepseek:
+        api-key: sk-cec238f491ed4fd0b132f0082dbc836b
+        base-url: https://api.deepseek.com
+        model: deepseek-chat
+      minimax:
+        api-key: sk-cp-uhvzcydf9lz_xjpXd99IYecsxMKNVX-IpvZMtzvYGQ2t2wHZyjtKIF_vaa6S7nQczkxUkLt8aLVsW2wa0LnP4kmZQSh--q3UssOGT8GRboAkWcHhhSIeREg
+        base-url: https://api.minimaxi.com
+        model: MiniMax-M2.7
+      # 示例：添加更多 provider
+      # qwen:
+      #   api-key: sk-xxx
+      #   base-url: https://dashscope.aliyuncs.com/compatible-mode
+      #   model: qwen-plus
