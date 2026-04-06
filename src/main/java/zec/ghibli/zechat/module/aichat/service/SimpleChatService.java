@@ -4,6 +4,7 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestBody;
 import reactor.core.publisher.Flux;
+import zec.ghibli.zechat.module.aichat.constant.SysPromptTemplate;
 
 import java.util.Map;
 
@@ -35,7 +36,7 @@ public class SimpleChatService {
             throw new IllegalArgumentException("Unknown provider: " + provider);
         }
         return chatClient.prompt()
-                .system("你是一个有帮助的助手，协助用户解答问题。你需要用中文回答用户的问题。")
+                .system(SysPromptTemplate.DEFAULT)
                 .user(message)
                 .stream()
                 .content();
