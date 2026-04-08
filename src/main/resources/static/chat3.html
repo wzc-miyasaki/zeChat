@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>zeChat - Rich</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #f5f5f5;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: #fff;
+            padding: 16px 20px;
+            border-bottom: 1px solid #e0e0e0;
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            text-align: center;
+        }
+
+        .messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .message {
+            max-width: 75%;
+            padding: 12px 16px;
+            border-radius: 12px;
+            line-height: 1.5;
+            word-wrap: break-word;
+            font-size: 15px;
+        }
+
+        .message.user {
+            align-self: flex-end;
+            background: #007aff;
+            color: #fff;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.user img {
+            max-width: 200px;
+            border-radius: 8px;
+            margin: 4px 0;
+            display: block;
+        }
+
+        .message.user .file-tag {
+            display: inline-block;
+            background: rgba(255,255,255,0.2);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 13px;
+            margin: 2px 0;
+        }
+
+        .message.assistant {
+            align-self: flex-start;
+            background: #fff;
+            color: #333;
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            white-space: pre-wrap;
+        }
+
+        .message.assistant .cursor {
+            display: inline-block;
+            width: 2px;
+            height: 1em;
+            background: #333;
+            animation: blink 0.8s infinite;
+            vertical-align: text-bottom;
+            margin-left: 1px;
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+
+        .input-area {
+            background: #fff;
+            border-top: 1px solid #e0e0e0;
+            padding: 12px 20px;
+        }
+
+        .editor-wrapper {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+            transition: border-color 0.2s;
+        }
+
+        .editor-wrapper:focus-within {
+            border-color: #007aff;
+        }
+
+        #editor {
+            min-height: 42px;
+            max-height: 160px;
+            overflow-y: auto;
+            padding: 10px 14px;
+            font-size: 15px;
+            font-family: inherit;
+            outline: none;
+            line-height: 1.5;
+        }
+
+        #editor:empty::before {
+            content: attr(data-placeholder);
+            color: #999;
+        }
+
+        #editor img {
+            max-width: 120px;
+            max-height: 120px;
+            border-radius: 6px;
+            vertical-align: middle;
+            margin: 2px;
+        }
+
+        #editor .file-chip {
+            display: inline-block;
+            background: #f0f0f0;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 2px 8px 2px 6px;
+            font-size: 13px;
+            margin: 2px;
+            vertical-align: middle;
+            cursor: default;
+            user-select: none;
+        }
+
+        #editor .file-chip .remove-chip {
+            cursor: pointer;
+            margin-left: 4px;
+            color: #999;
+        }
+
+        #editor .file-chip .remove-chip:hover {
+            color: #f00;
+        }
+
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 10px;
+            border-top: 1px solid #f0f0f0;
+        }
+
+        .toolbar button {
+            border: none;
+            border-radius: 6px;
+            padding: 6px 16px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .attach-btn {
+            background: #f0f0f0;
+            color: #555;
+        }
+        .attach-btn:hover { background: #e0e0e0; }
+
+        .send-btn {
+            background: #007aff;
+            color: #fff;
+        }
+        .send-btn:hover { background: #005ecb; }
+        .send-btn:disabled { background: #b0b0b0; cursor: not-allowed; }
+
+        .uploading-indicator {
+            font-size: 12px;
+            color: #999;
+            padding: 4px 0;
+        }
+
+        @media (max-width: 600px) {
+            .message { max-width: 85%; }
+            .input-area { padding: 8px 12px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">zeChat</div>
+    <div class="messages" id="messages"></div>
+    <div class="input-area">
+        <div class="editor-wrapper">
+            <div id="editor" contenteditable="true" data-placeholder="输入消息..."></div>
+            <div class="toolbar">
+                <div>
+                    <button class="attach-btn" onclick="triggerFileUpload()">附件</button>
+                    <span id="uploadStatus" class="uploading-indicator"></span>
+                </div>
+                <button class="send-btn" id="sendBtn" onclick="sendMessage()">发送</button>
+            </div>
+        </div>
+        <input type="file" id="fileInput" hidden multiple
+               accept="image/png,image/jpeg,image/gif,image/webp,application/pdf,.doc,.docx,.xls,.xlsx,.txt,.md,.csv">
+    </div>
+
+    <script>
+        const messagesEl = document.getElementById('messages');
+        const editor = document.getElementById('editor');
+        const sendBtn = document.getElementById('sendBtn');
+        const fileInput = document.getElementById('fileInput');
+        const uploadStatus = document.getElementById('uploadStatus');
+
+        const IMAGE_INLINE_LIMIT = 1024 * 1024; // 1MB
+
+        // --- Enter to send, Shift+Enter for newline ---
+        editor.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        // --- Paste handler (images from clipboard) ---
+        editor.addEventListener('paste', (e) => {
+            const items = e.clipboardData?.items;
+            if (!items) return;
+
+            for (const item of items) {
+                if (item.type.startsWith('image/')) {
+                    e.preventDefault();
+                    const file = item.getAsFile();
+                    handleImageFile(file);
+                    return;
+                }
+            }
+            // Allow default paste for text
+        });
+
+        // --- Drag and drop handler ---
+        editor.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            editor.style.background = '#f0f8ff';
+        });
+
+        editor.addEventListener('dragleave', () => {
+            editor.style.background = '';
+        });
+
+        editor.addEventListener('drop', (e) => {
+            e.preventDefault();
+            editor.style.background = '';
+            const files = e.dataTransfer?.files;
+            if (!files) return;
+
+            for (const file of files) {
+                if (file.type.startsWith('image/')) {
+                    handleImageFile(file);
+                } else {
+                    handleDocumentFile(file);
+                }
+            }
+        });
+
+        // --- File input handler ---
+        fileInput.addEventListener('change', () => {
+            for (const file of fileInput.files) {
+                if (file.type.startsWith('image/')) {
+                    handleImageFile(file);
+                } else {
+                    handleDocumentFile(file);
+                }
+            }
+            fileInput.value = '';
+        });
+
+        function triggerFileUpload() {
+            fileInput.click();
+        }
+
+        // --- Image handling ---
+        async function handleImageFile(file) {
+            if (file.size < IMAGE_INLINE_LIMIT) {
+                // Small image: inline as base64
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const base64 = reader.result.split(',')[1];
+                    const img = document.createElement('img');
+                    img.src = reader.result;
+                    img.dataset.inlineData = base64;
+                    img.dataset.mimeType = file.type;
+                    img.contentEditable = 'false';
+                    editor.appendChild(img);
+                    placeCaretAtEnd();
+                };
+                reader.readAsDataURL(file);
+            } else {
+                // Large image: upload first
+                showUploading(file.name);
+                const meta = await uploadFile(file);
+                hideUploading();
+                if (meta) {
+                    const img = document.createElement('img');
+                    img.src = '/api/chat/files/' + meta.fileId;
+                    img.dataset.fileId = meta.fileId;
+                    img.dataset.mimeType = meta.mimeType;
+                    img.contentEditable = 'false';
+                    editor.appendChild(img);
+                    placeCaretAtEnd();
+                }
+            }
+        }
+
+        // --- Document file handling ---
+        async function handleDocumentFile(file) {
+            showUploading(file.name);
+            const meta = await uploadFile(file);
+            hideUploading();
+            if (meta) {
+                insertFileChip(meta);
+            }
+        }
+
+        function insertFileChip(meta) {
+            const chip = document.createElement('span');
+            chip.className = 'file-chip';
+            chip.contentEditable = 'false';
+            chip.dataset.fileId = meta.fileId;
+            chip.dataset.fileName = meta.fileName;
+            chip.dataset.mimeType = meta.mimeType;
+            chip.dataset.size = meta.size;
+            chip.innerHTML = '&#128196; ' + meta.fileName +
+                ' <span class="remove-chip" onclick="this.parentElement.remove()">&#10005;</span>';
+            editor.appendChild(chip);
+            placeCaretAtEnd();
+        }
+
+        // --- Upload ---
+        async function uploadFile(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+            try {
+                const resp = await fetch('/api/chat/upload', { method: 'POST', body: formData });
+                if (!resp.ok) {
+                    const text = await resp.text();
+                    alert('上传失败: ' + text);
+                    return null;
+                }
+                return await resp.json();
+            } catch (err) {
+                alert('上传失败: ' + err.message);
+                return null;
+            }
+        }
+
+        function showUploading(name) {
+            uploadStatus.textContent = '上传中: ' + name + '...';
+        }
+
+        function hideUploading() {
+            uploadStatus.textContent = '';
+        }
+
+        // --- Serialization ---
+        function serializeBlocks() {
+            const blocks = [];
+            let nextId = 1;
+
+            function processNode(node) {
+                if (node.nodeType === Node.TEXT_NODE) {
+                    const text = node.textContent;
+                    if (!text || text.trim() === '') return;
+                    if (text.includes('\n')) {
+                        const parts = text.split('\n');
+                        for (const part of parts) {
+                            const trimmed = part.trim();
+                            if (trimmed) {
+                                blocks.push({ id: nextId++, type: 'TEXT', text: trimmed });
+                            }
+                        }
+                    } else {
+                        const trimmed = text.trim();
+                        if (trimmed) {
+                            blocks.push({ id: nextId++, type: 'TEXT', text: trimmed });
+                        }
+                    }
+                } else if (node.nodeType === Node.ELEMENT_NODE) {
+                    const el = node;
+                    if (el.tagName === 'IMG') {
+                        if (el.dataset.inlineData) {
+                            blocks.push({
+                                id: nextId++,
+                                type: 'IMAGE',
+                                mimeType: el.dataset.mimeType,
+                                inlineData: el.dataset.inlineData
+                            });
+                        } else if (el.dataset.fileId) {
+                            blocks.push({
+                                id: nextId++,
+                                type: 'IMAGE',
+                                fileId: el.dataset.fileId,
+                                mimeType: el.dataset.mimeType
+                            });
+                        }
+                    } else if (el.classList.contains('file-chip')) {
+                        blocks.push({
+                            id: nextId++,
+                            type: 'FILE',
+                            fileId: el.dataset.fileId,
+                            fileName: el.dataset.fileName,
+                            mimeType: el.dataset.mimeType,
+                            size: parseInt(el.dataset.size, 10)
+                        });
+                    } else if (el.tagName === 'BR') {
+                        // Ignore <br> — visual only
+                    } else {
+                        // <div>, <p>, <span> etc — recurse into children
+                        for (const child of el.childNodes) {
+                            processNode(child);
+                        }
+                    }
+                }
+            }
+
+            for (const child of editor.childNodes) {
+                processNode(child);
+            }
+
+            return blocks;
+        }
+
+        // --- Send ---
+        async function sendMessage() {
+            const blocks = serializeBlocks();
+            if (blocks.length === 0) return;
+
+            renderUserMessage(blocks);
+            editor.innerHTML = '';
+            sendBtn.disabled = true;
+
+            const assistantDiv = document.createElement('div');
+            assistantDiv.className = 'message assistant';
+            const cursor = document.createElement('span');
+            cursor.className = 'cursor';
+            assistantDiv.appendChild(cursor);
+            messagesEl.appendChild(assistantDiv);
+            scrollToBottom();
+
+            try {
+                const response = await fetch('/api/chat/stream/v3', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ blocks })
+                });
+
+                if (!response.ok) {
+                    const errText = await response.text();
+                    assistantDiv.textContent = '错误: ' + errText;
+                    cursor.remove();
+                    return;
+                }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let fullText = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    const chunk = decoder.decode(value, { stream: true });
+                    const lines = chunk.split('\n');
+                    for (const line of lines) {
+                        if (line.startsWith('data:')) {
+                            fullText += line.substring(5);
+                            assistantDiv.textContent = fullText;
+                            assistantDiv.appendChild(cursor);
+                            scrollToBottom();
+                        }
+                    }
+                }
+
+                cursor.remove();
+            } catch (err) {
+                assistantDiv.textContent = '发送失败: ' + err.message;
+                cursor.remove();
+            } finally {
+                sendBtn.disabled = false;
+                editor.focus();
+            }
+        }
+
+        function renderUserMessage(blocks) {
+            const div = document.createElement('div');
+            div.className = 'message user';
+
+            for (const block of blocks) {
+                if (block.type === 'TEXT') {
+                    const p = document.createElement('div');
+                    p.textContent = block.text;
+                    div.appendChild(p);
+                } else if (block.type === 'IMAGE') {
+                    const img = document.createElement('img');
+                    if (block.inlineData) {
+                        img.src = 'data:' + block.mimeType + ';base64,' + block.inlineData;
+                    } else if (block.fileId) {
+                        img.src = '/api/chat/files/' + block.fileId;
+                    }
+                    div.appendChild(img);
+                } else if (block.type === 'FILE') {
+                    const tag = document.createElement('div');
+                    tag.className = 'file-tag';
+                    tag.textContent = '📄 ' + block.fileName;
+                    div.appendChild(tag);
+                }
+            }
+
+            messagesEl.appendChild(div);
+            scrollToBottom();
+        }
+
+        function scrollToBottom() {
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+        }
+
+        function placeCaretAtEnd() {
+            const range = document.createRange();
+            range.selectNodeContents(editor);
+            range.collapse(false);
+            const sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(range);
+        }
+    </script>
+</body>
+</html>
