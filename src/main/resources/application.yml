@@ -6,6 +6,10 @@ spring:
       api-key: none        # disable auto-configured ChatClient
       chat:
         enabled: false
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
 
 ai:
   chat:
@@ -23,3 +27,20 @@ ai:
       #   api-key: sk-xxx
       #   base-url: https://dashscope.aliyuncs.com/compatible-mode
       #   model: qwen-plus
+
+zechat:
+  upload:
+    dir: ./uploads
+    allowed-types:
+      - image/png
+      - image/jpeg
+      - image/gif
+      - image/webp
+      - application/pdf
+      - application/msword
+      - application/vnd.openxmlformats-officedocument.wordprocessingml.document
+      - application/vnd.ms-excel
+      - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+      - text/plain
+      - text/markdown
+      - text/csv
