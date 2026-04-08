@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>frontend-design skill</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,900;1,400&family=DM+Mono:wght@300;400&family=Cormorant+Garamond:wght@300;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --ink: #0d0d0d;
+    --paper: #f5f0e8;
+    --accent: #c8402a;
+    --muted: #8a8070;
+    --rule: #d4cfc4;
+  }
+
+  html { font-size: 16px; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'DM Mono', monospace;
+    font-weight: 300;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── GRAIN OVERLAY ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    pointer-events: none;
+    z-index: 9999;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    opacity: 0.35;
+  }
+
+  /* ── MASTHEAD ── */
+  header {
+    border-bottom: 2px solid var(--ink);
+    padding: 1.5rem 4vw;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    animation: slideDown 0.6s cubic-bezier(0.16,1,0.3,1) both;
+  }
+
+  .masthead-tag {
+    font-size: 0.65rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .issue-info {
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+  }
+
+  /* ── HERO ── */
+  .hero {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    border-bottom: 1px solid var(--rule);
+    min-height: 72vh;
+  }
+
+  .hero-sidebar {
+    border-right: 1px solid var(--rule);
+    padding: 3rem 2rem 3rem 4vw;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    animation: fadeIn 0.8s 0.2s both;
+  }
+
+  .sidebar-label {
+    font-size: 0.6rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 1.5rem;
+  }
+
+  .sidebar-manifesto {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.05rem;
+    line-height: 1.9;
+    color: var(--muted);
+    font-weight: 300;
+  }
+
+  .sidebar-manifesto em {
+    color: var(--ink);
+    font-style: italic;
+  }
+
+  .sidebar-bottom {
+    font-size: 0.6rem;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    border-top: 1px solid var(--rule);
+    padding-top: 1.5rem;
+  }
+
+  .hero-main {
+    padding: 3rem 4vw 3rem 3rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    position: relative;
+    animation: fadeIn 0.8s 0.35s both;
+  }
+
+  .overline {
+    font-size: 0.6rem;
+    letter-spacing: 0.35em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 2rem;
+  }
+
+  .headline {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(3.5rem, 7vw, 7rem);
+    font-weight: 900;
+    line-height: 0.92;
+    letter-spacing: -0.02em;
+    margin-bottom: 2.5rem;
+  }
+
+  .headline .italic {
+    font-style: italic;
+    font-weight: 400;
+    color: var(--accent);
+  }
+
+  .headline .rule-word {
+    display: inline-block;
+    border-bottom: 4px solid var(--ink);
+  }
+
+  .deck {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.35rem;
+    line-height: 1.65;
+    color: var(--muted);
+    max-width: 52ch;
+    font-weight: 300;
+    margin-bottom: 3rem;
+    border-left: 3px solid var(--accent);
+    padding-left: 1.5rem;
+  }
+
+  .hero-cta {
+    display: inline-block;
+    font-size: 0.65rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--paper);
+    background: var(--ink);
+    padding: 0.85rem 2rem;
+    text-decoration: none;
+    transition: background 0.2s, color 0.2s;
+    align-self: flex-start;
+  }
+
+  .hero-cta:hover {
+    background: var(--accent);
+  }
+
+  .hero-number {
+    position: absolute;
+    bottom: 3rem;
+    right: 4vw;
+    font-family: 'Playfair Display', serif;
+    font-size: 10rem;
+    font-weight: 900;
+    color: transparent;
+    -webkit-text-stroke: 1px var(--rule);
+    line-height: 1;
+    pointer-events: none;
+    user-select: none;
+  }
+
+  /* ── CAPABILITIES SECTION ── */
+  .capabilities {
+    padding: 5rem 4vw;
+    animation: fadeIn 0.8s 0.5s both;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: baseline;
+    gap: 2rem;
+    margin-bottom: 3rem;
+    border-bottom: 2px solid var(--ink);
+    padding-bottom: 0.75rem;
+  }
+
+  .section-title {
+    font-size: 0.65rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+  }
+
+  .section-rule {
+    flex: 1;
+    height: 1px;
+    background: var(--rule);
+  }
+
+  .section-num {
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+  }
+
+  .cap-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0;
+  }
+
+  .cap-item {
+    padding: 2.5rem 2rem;
+    border-right: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+    transition: background 0.25s;
+    cursor: default;
+  }
+
+  .cap-item:nth-child(3n) { border-right: none; }
+  .cap-item:nth-last-child(-n+3) { border-bottom: none; }
+
+  .cap-item:hover { background: rgba(200,64,42,0.04); }
+
+  .cap-index {
+    font-size: 0.6rem;
+    color: var(--accent);
+    letter-spacing: 0.2em;
+    margin-bottom: 1.25rem;
+  }
+
+  .cap-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.5rem;
+    font-weight: 400;
+    margin-bottom: 1rem;
+    line-height: 1.2;
+  }
+
+  .cap-title em { font-style: italic; color: var(--accent); }
+
+  .cap-desc {
+    font-size: 0.8rem;
+    line-height: 1.8;
+    color: var(--muted);
+  }
+
+  /* ── SPECIMEN ── */
+  .specimen {
+    border-top: 2px solid var(--ink);
+    border-bottom: 2px solid var(--ink);
+    padding: 4rem 4vw;
+    background: var(--ink);
+    color: var(--paper);
+    overflow: hidden;
+    position: relative;
+    animation: fadeIn 0.8s 0.65s both;
+  }
+
+  .specimen-label {
+    font-size: 0.6rem;
+    letter-spacing: 0.35em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 2.5rem;
+  }
+
+  .specimen-type {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2rem, 5vw, 5rem);
+    font-weight: 900;
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+  }
+
+  .specimen-type .ghost {
+    color: transparent;
+    -webkit-text-stroke: 1px rgba(245,240,232,0.2);
+  }
+
+  .specimen-type .filled { color: var(--paper); }
+  .specimen-type .red { color: var(--accent); }
+
+  .specimen-mono {
+    font-family: 'DM Mono', monospace;
+    font-size: clamp(1rem, 2.5vw, 2.5rem);
+    font-weight: 300;
+    letter-spacing: 0.08em;
+    color: rgba(245,240,232,0.4);
+    margin-top: 1.5rem;
+  }
+
+  .specimen-bg-num {
+    position: absolute;
+    right: -2rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-family: 'Playfair Display', serif;
+    font-size: 28rem;
+    font-weight: 900;
+    color: transparent;
+    -webkit-text-stroke: 1px rgba(255,255,255,0.04);
+    line-height: 1;
+    pointer-events: none;
+  }
+
+  /* ── AESTHETICS SHOWCASE ── */
+  .aesthetics {
+    padding: 5rem 4vw;
+    animation: fadeIn 0.8s 0.8s both;
+  }
+
+  .aesthetic-list {
+    list-style: none;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    border: 1px solid var(--rule);
+  }
+
+  .aesthetic-list li {
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid var(--rule);
+    border-right: 1px solid var(--rule);
+    display: flex;
+    align-items: baseline;
+    gap: 1.25rem;
+    font-size: 0.8rem;
+    line-height: 1.6;
+    transition: background 0.2s;
+  }
+
+  .aesthetic-list li:nth-child(even) { border-right: none; }
+  .aesthetic-list li:nth-last-child(-n+2) { border-bottom: none; }
+  .aesthetic-list li:hover { background: rgba(200,64,42,0.03); }
+
+  .ae-mark {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.1rem;
+    font-style: italic;
+    color: var(--accent);
+    flex-shrink: 0;
+    width: 1.5rem;
+  }
+
+  .ae-text { color: var(--muted); }
+  .ae-text strong { color: var(--ink); font-weight: 400; }
+
+  /* ── FOOTER ── */
+  footer {
+    border-top: 2px solid var(--ink);
+    padding: 1.5rem 4vw;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    animation: fadeIn 0.8s 1s both;
+  }
+
+  .footer-brand {
+    font-family: 'Playfair Display', serif;
+    font-size: 1rem;
+    font-style: italic;
+  }
+
+  .footer-note {
+    font-size: 0.6rem;
+    letter-spacing: 0.2em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  /* ── TICKER ── */
+  .ticker-wrap {
+    border-top: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+    overflow: hidden;
+    padding: 0.6rem 0;
+    background: var(--paper);
+  }
+
+  .ticker {
+    display: flex;
+    gap: 4rem;
+    animation: ticker 22s linear infinite;
+    white-space: nowrap;
+  }
+
+  .ticker span {
+    font-size: 0.6rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .ticker span.dot { color: var(--accent); }
+
+  /* ── ANIMATIONS ── */
+  @keyframes slideDown {
+    from { transform: translateY(-1.5rem); opacity: 0; }
+    to   { transform: translateY(0);       opacity: 1; }
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(1rem); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes ticker {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="masthead-tag">frontend-design / skill</span>
+  <span class="issue-info">Issue No.1 &nbsp;·&nbsp; Claude Code Skill</span>
+</header>
+
+<div class="ticker-wrap">
+  <div class="ticker">
+    <span>Typography</span><span class="dot">◆</span>
+    <span>Color Theory</span><span class="dot">◆</span>
+    <span>Motion Design</span><span class="dot">◆</span>
+    <span>Spatial Composition</span><span class="dot">◆</span>
+    <span>Visual Hierarchy</span><span class="dot">◆</span>
+    <span>Production Grade</span><span class="dot">◆</span>
+    <span>Anti Generic</span><span class="dot">◆</span>
+    <span>Distinctive Aesthetics</span><span class="dot">◆</span>
+    <!-- duplicate for seamless loop -->
+    <span>Typography</span><span class="dot">◆</span>
+    <span>Color Theory</span><span class="dot">◆</span>
+    <span>Motion Design</span><span class="dot">◆</span>
+    <span>Spatial Composition</span><span class="dot">◆</span>
+    <span>Visual Hierarchy</span><span class="dot">◆</span>
+    <span>Production Grade</span><span class="dot">◆</span>
+    <span>Anti Generic</span><span class="dot">◆</span>
+    <span>Distinctive Aesthetics</span><span class="dot">◆</span>
+  </div>
+</div>
+
+<section class="hero">
+  <aside class="hero-sidebar">
+    <div>
+      <p class="sidebar-label">Manifesto</p>
+      <p class="sidebar-manifesto">
+        拒绝<em>平庸</em>。<br><br>
+        每一个界面都是一次机会——<em>留下印象</em>，而非随波逐流。<br><br>
+        我们不做"够用"的设计，我们做<em>令人难忘</em>的设计。
+      </p>
+    </div>
+    <div class="sidebar-bottom">
+      ANTI-GENERIC &nbsp;·&nbsp; ANTI-SLOP &nbsp;·&nbsp; PRO-CHARACTER
+    </div>
+  </aside>
+
+  <main class="hero-main">
+    <p class="overline">Frontend Design Skill — Claude Code</p>
+    <h1 class="headline">
+      制造<br>
+      <span class="italic">难以</span><br>
+      <span class="rule-word">忘怀</span><br>
+      的界面
+    </h1>
+    <p class="deck">
+      一个指导 Claude 生成卓越前端界面的 skill。
+      不是模板填充，是有观点的设计——每次调用都是独一无二的创作。
+    </p>
+    <a class="hero-cta" href="#">阅读全文</a>
+    <div class="hero-number">01</div>
+  </main>
+</section>
+
+<section class="capabilities">
+  <div class="section-header">
+    <span class="section-title">核心能力</span>
+    <div class="section-rule"></div>
+    <span class="section-num">§ 02</span>
+  </div>
+
+  <div class="cap-grid">
+    <div class="cap-item">
+      <p class="cap-index">01 —</p>
+      <h3 class="cap-title">排版<em>至上</em></h3>
+      <p class="cap-desc">拒绝 Inter、Roboto 等泛用字体。每次选用有个性的展示字体，搭配精致的正文字体，以字型传达气质。</p>
+    </div>
+    <div class="cap-item">
+      <p class="cap-index">02 —</p>
+      <h3 class="cap-title">色彩<em>立场</em></h3>
+      <p class="cap-desc">主色调 + 锐利点缀，而非怯懦的平均分配。禁用紫色渐变白底等 AI 烂俗配色。每个项目都有专属调色盘。</p>
+    </div>
+    <div class="cap-item">
+      <p class="cap-index">03 —</p>
+      <h3 class="cap-title">动效<em>克制</em></h3>
+      <p class="cap-desc">一次精心编排的页面入场胜过零散的微交互。CSS-first，高影响力时刻，让动效成为叙事的一部分而非装饰。</p>
+    </div>
+    <div class="cap-item">
+      <p class="cap-index">04 —</p>
+      <h3 class="cap-title">空间<em>构成</em></h3>
+      <p class="cap-desc">非对称、叠加、对角线流动、打破网格。极致留白或受控密度——两者都能传达力量，关键在于意图。</p>
+    </div>
+    <div class="cap-item">
+      <p class="cap-index">05 —</p>
+      <h3 class="cap-title">背景<em>氛围</em></h3>
+      <p class="cap-desc">渐变网格、噪点纹理、几何图案、分层透明度、戏剧性阴影——营造纵深感与氛围，而非填充空白。</p>
+    </div>
+    <div class="cap-item">
+      <p class="cap-index">06 —</p>
+      <h3 class="cap-title">生产<em>级别</em></h3>
+      <p class="cap-desc">不只是原型。输出可直接部署的 HTML/CSS/JS 或 React/Vue 组件，功能完整，细节打磨到位。</p>
+    </div>
+  </div>
+</section>
+
+<section class="specimen">
+  <p class="specimen-label">§ 03 — Type Specimen</p>
+  <div class="specimen-type">
+    <div class="filled">Playfair Display</div>
+    <div class="ghost">Cormorant Garamond</div>
+    <div class="red">DM Mono</div>
+  </div>
+  <div class="specimen-mono">ABCDEFGHIJKLMNOPQRSTUVWXYZ &nbsp; 0123456789</div>
+  <div class="specimen-bg-num">S</div>
+</section>
+
+<section class="aesthetics">
+  <div class="section-header">
+    <span class="section-title">设计美学词典</span>
+    <div class="section-rule"></div>
+    <span class="section-num">§ 04</span>
+  </div>
+
+  <ul class="aesthetic-list">
+    <li><span class="ae-mark">I</span><span class="ae-text"><strong>粗野极简</strong> — 仅留必要元素，每个像素都有理由存在</span></li>
+    <li><span class="ae-mark">II</span><span class="ae-text"><strong>复古未来</strong> — 用过去的视觉语言描绘未来世界</span></li>
+    <li><span class="ae-mark">III</span><span class="ae-text"><strong>奢华精炼</strong> — 细节即奢华，克制中透出昂贵感</span></li>
+    <li><span class="ae-mark">IV</span><span class="ae-text"><strong>编辑杂志</strong> — 印刷排版逻辑迁移到数字屏幕</span></li>
+    <li><span class="ae-mark">V</span><span class="ae-text"><strong>工业实用</strong> — 粗粝的真实感，拒绝过度美化</span></li>
+    <li><span class="ae-mark">VI</span><span class="ae-text"><strong>艺术装饰</strong> — 几何对称，黄金年代的视觉优雅</span></li>
+    <li><span class="ae-mark">VII</span><span class="ae-text"><strong>有机自然</strong> — 流线、纹理、呼吸感</span></li>
+    <li><span class="ae-mark">VIII</span><span class="ae-text"><strong>玩具感</strong> — 夸张的活泼，触感可感知的数字物体</span></li>
+  </ul>
+</section>
+
+<footer>
+  <span class="footer-brand">frontend-design</span>
+  <span class="footer-note">Claude Code Official Skill &nbsp;·&nbsp; 2026</span>
+</footer>
+
+</body>
+</html>
