@@ -164,7 +164,7 @@
   .restart-btn:hover { opacity: 0.9; transform: translateY(-1px); }
   .restart-btn:active { transform: translateY(0); }
 
-  /* Login overlay */
+  /* Entry overlay */
   .login-overlay {
     position: fixed; inset: 0; background: rgba(13,13,20,0.96);
     display: flex; align-items: center; justify-content: center; z-index: 100;
@@ -192,25 +192,28 @@
   }
   .login-btn:hover { opacity: 0.88; }
   .login-error { font-size: 12px; color: #e94560; text-align: center; min-height: 16px; }
+  .room-gen { font-size: 11px; color: var(--accent); cursor: pointer; text-align: right; letter-spacing: 1px; }
+  .room-gen:hover { opacity: 0.8; }
 </style>
 </head>
 <body>
 
-<!-- Login overlay -->
+<!-- Entry overlay -->
 <div class="login-overlay" id="loginOverlay">
   <div class="login-card">
     <div class="login-title">五子棋</div>
-    <div class="login-hint">首次登录自动注册<br>用户名 + 密码即可开始对战</div>
+    <div class="login-hint">输入用户名和房间号加入对战<br>房间不存在时自动创建</div>
     <div class="login-field">
       <label>用户名</label>
       <input id="loginUser" type="text" placeholder="输入用户名" autocomplete="username">
     </div>
     <div class="login-field">
-      <label>密码</label>
-      <input id="loginPass" type="password" placeholder="输入密码" autocomplete="current-password">
+      <label>房间号</label>
+      <input id="loginRoom" type="text" placeholder="输入或生成房间号">
+      <span class="room-gen" onclick="genRoom()">随机生成</span>
     </div>
     <div class="login-error" id="loginError"></div>
-    <button class="login-btn" onclick="doLogin()">进入游戏</button>
+    <button class="login-btn" onclick="doEnter()">进入游戏</button>
   </div>
 </div>
 
@@ -220,7 +223,6 @@
     <div style="display:flex;gap:8px;align-items:center">
       <span id="userLabel" style="font-size:12px;color:var(--muted)"></span>
       <div class="room-badge" id="roomBadge">未连接</div>
-      <button id="logoutBtn" onclick="doLogout()" style="display:none;font-size:11px;padding:3px 10px;border-radius:20px;border:1px solid var(--border);background:var(--surface);color:var(--muted);cursor:pointer;letter-spacing:1px">退出</button>
     </div>
   </div>
 
@@ -284,56 +286,31 @@ let board = Array.from({length: SIZE}, () => new Array(SIZE).fill(0));
 let lastMove = null, pendingMove = null;
 let hoverCell = null;
 let ws = null, reconnectDelay = 500;
-let authToken = null;
+let myUsername = null;
 
-// ── Login ─────────────────────────────────────────────────────────────────────
+// ── Entry ─────────────────────────────────────────────────────────────────────
 
-async function doLogout() {
-  if (authToken) {
-    const roomId = localStorage.getItem('gomoku_room');
-    await fetch('/api/game/logout', {
-      method: 'POST',
-      headers: {'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json'},
-      body: JSON.stringify(roomId ? {roomId} : {})
-    }).catch(() => {});
-  }
-  authToken = null;
-  localStorage.removeItem('gomoku_token');
-  localStorage.removeItem('gomoku_username');
-  localStorage.removeItem('gomoku_room');
-  if (ws) { ws.onclose = null; ws.close(); ws = null; }
-  document.getElementById('logoutBtn').style.display = 'none';
-  userLabel.textContent = '';
-  loginOverlay.classList.remove('hidden');
+function genRoom() {
+  document.getElementById('loginRoom').value = Math.random().toString(36).slice(2, 8);
 }
 
-async function doLogin() {
+function doEnter() {
   const username = document.getElementById('loginUser').value.trim();
-  const password = document.getElementById('loginPass').value;
+  const roomId   = document.getElementById('loginRoom').value.trim();
   loginError.textContent = '';
-  if (!username || !password) { loginError.textContent = '请填写用户名和密码'; return; }
-  try {
-    const res = await fetch('/api/game/login', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({username, password})
-    });
-    const data = await res.json();
-    if (!res.ok) { loginError.textContent = data.error || '登录失败'; return; }
-    authToken = data.token;
-    localStorage.setItem('gomoku_token', authToken);
-    localStorage.setItem('gomoku_username', data.username);
-    userLabel.textContent = data.username;
-    document.getElementById('logoutBtn').style.display = '';
-    loginOverlay.classList.add('hidden');
-    connect();
-  } catch {
-    loginError.textContent = '网络错误，请重试';
-  }
+  if (!username) { loginError.textContent = '请填写用户名'; return; }
+  if (!roomId)   { loginError.textContent = '请填写房间号'; return; }
+  myUsername = username;
+  myRoomId   = roomId;
+  localStorage.setItem('gomoku_username', username);
+  localStorage.setItem('gomoku_room', roomId);
+  userLabel.textContent = username;
+  loginOverlay.classList.add('hidden');
+  connect();
 }
 
 document.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && !loginOverlay.classList.contains('hidden')) doLogin();
+  if (e.key === 'Enter' && !loginOverlay.classList.contains('hidden')) doEnter();
 });
 
 // ── Drawing ──────────────────────────────────────────────────────────────────
@@ -503,10 +480,7 @@ function connect() {
 
   ws.onopen = () => {
     reconnectDelay = 500;
-    const saved = localStorage.getItem('gomoku_room');
-    send(saved
-      ? { type: 'rejoin', roomId: saved, token: authToken }
-      : { type: 'join', token: authToken });
+    send({ type: 'join', username: myUsername, roomId: myRoomId });
   };
 
   ws.onmessage = e => handle(JSON.parse(e.data));
@@ -526,29 +500,7 @@ function connect() {
 function handle(msg) {
   switch (msg.type) {
 
-    case 'waiting':
-      myRoomId = msg.roomId;
-      localStorage.setItem('gomoku_room', myRoomId);
-      roomBadge.textContent = `房间 ${myRoomId}`;
-      setStatus('等待对手加入...', '');
-      break;
-
-    case 'start':
-      myColor  = msg.color === 'black' ? 1 : 2;
-      myRoomId = msg.roomId;
-      myTurn   = myColor === 1;
-      gameOver = false;
-      board    = Array.from({length: SIZE}, () => new Array(SIZE).fill(0));
-      lastMove = null; pendingMove = null;
-      localStorage.setItem('gomoku_room', myRoomId);
-      roomBadge.textContent = `房间 ${myRoomId}`;
-      restartBtn.style.display = 'none';
-      redraw();
-      updatePlayerCards(myColor === 1 ? 1 : 2);
-      setStatus(myTurn ? '轮到你落子' : '等待对手落子', myTurn ? 'active' : '');
-      break;
-
-    case 'reconnected':
+    case 'joined':
       myColor  = msg.color === 'black' ? 1 : 2;
       myRoomId = msg.roomId;
       board    = msg.board;
@@ -556,7 +508,9 @@ function handle(msg) {
       pendingMove = null;
       const turnC = msg.turn === 'black' ? 1 : 2;
       myTurn = turnC === myColor;
-      roomBadge.textContent = `房间 ${myRoomId} ↺`;
+      localStorage.setItem('gomoku_room', myRoomId);
+      roomBadge.textContent = `房间 ${myRoomId}`;
+      restartBtn.style.display = 'none';
       redraw();
       updatePlayerCards(turnC);
       setStatus(myTurn ? '轮到你落子' : '等待对手落子', myTurn ? 'active' : '');
@@ -605,9 +559,9 @@ function handle(msg) {
       break;
 
     case 'error':
-      if (msg.message === 'room not found') {
-        localStorage.removeItem('gomoku_room');
-        send({ type: 'join' });
+      if (msg.message === 'room full') {
+        loginError.textContent = '房间已满，请换一个房间号';
+        loginOverlay.classList.remove('hidden');
       } else if (pendingMove) {
         // Roll back optimistic move
         board[pendingMove.y][pendingMove.x] = 0;
@@ -639,7 +593,7 @@ function updatePlayerCards(activeTurn) {
 }
 
 function newGame() {
-  myColor = null; myRoomId = null; gameOver = false; myTurn = false;
+  myColor = null; gameOver = false; myTurn = false;
   board = Array.from({length: SIZE}, () => new Array(SIZE).fill(0));
   lastMove = null; pendingMove = null;
   restartBtn.style.display = 'none';
@@ -649,21 +603,20 @@ function newGame() {
   roleBlack.textContent = '先手'; roleWhite.textContent = '后手';
   localStorage.removeItem('gomoku_room');
   redraw();
-  send({ type: 'join', token: authToken });
-  setStatus('等待对手加入...', '');
+  loginOverlay.classList.remove('hidden');
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 redraw();
-authToken = localStorage.getItem('gomoku_token');
-if (authToken) {
-  const username = localStorage.getItem('gomoku_username') || '';
-  userLabel.textContent = username;
-  document.getElementById('logoutBtn').style.display = '';
+myUsername = localStorage.getItem('gomoku_username');
+myRoomId   = localStorage.getItem('gomoku_room');
+if (myUsername && myRoomId) {
+  userLabel.textContent = myUsername;
+  document.getElementById('loginUser').value = myUsername;
+  document.getElementById('loginRoom').value = myRoomId;
   loginOverlay.classList.add('hidden');
   connect();
 }
-// else: login overlay stays visible, connect() called after doLogin()
 </script>
 </body>
 </html>

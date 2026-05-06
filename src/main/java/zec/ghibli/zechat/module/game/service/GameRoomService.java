@@ -1,13 +1,11 @@
 package zec.ghibli.zechat.module.game.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import zec.ghibli.zechat.module.game.model.GameRoom;
-import zec.ghibli.zechat.module.game.model.UserSession;
 
 import java.io.IOException;
 import java.util.Map;
@@ -16,60 +14,26 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 public class GameRoomService {
 
-    private final UserService userService;
     private final ObjectMapper mapper = new ObjectMapper();
     private final Map<String, GameRoom> rooms = new ConcurrentHashMap<>();
-    private volatile GameRoom waitingRoom = null;
 
-    public GameRoomService(UserService userService) {
-        this.userService = userService;
-    }
+    public synchronized void join(WebSocketSession session, String username, String roomId) throws IOException {
+        GameRoom room = rooms.computeIfAbsent(roomId, GameRoom::new);
 
-    public synchronized void join(WebSocketSession session, String token) throws IOException {
-        UserSession user = userService.validate(token);
-        if (user == null) { send(session, Map.of("type", "error", "message", "未登录")); return; }
-
-        if (waitingRoom == null) {
-            GameRoom room = new GameRoom();
-            room.sessions[0] = session;
-            room.playerIds[0] = user.username();
-            rooms.put(room.roomId, room);
-            waitingRoom = room;
-            send(session, Map.of("type", "waiting", "roomId", room.roomId));
-        } else {
-            GameRoom room = waitingRoom;
-            waitingRoom = null;
-            room.sessions[1] = session;
-            room.playerIds[1] = user.username();
-            send(room.sessions[0], Map.of("type", "start", "color", "black", "roomId", room.roomId));
-            send(room.sessions[1], Map.of("type", "start", "color", "white", "roomId", room.roomId));
-        }
-    }
-
-    public synchronized void rejoin(WebSocketSession session, String roomId, String token) throws IOException {
-        UserSession user = userService.validate(token);
-        if (user == null) { send(session, Map.of("type", "error", "message", "未登录")); return; }
-
-        GameRoom room = rooms.get(roomId);
-        if (room == null || room.finished) {
-            send(session, Map.of("type", "error", "message", "room not found")); return;
-        }
-        // Find the slot that belongs to this userId
         int slot = -1;
-        for (int i = 0; i < 2; i++) {
-            if (user.username().equals(room.playerIds[i])) { slot = i; break; }
+        for (int i = 0; i < room.sessions.length; i++) {
+            if (room.sessions[i] == null || !room.sessions[i].isOpen()) { slot = i; break; }
         }
-        if (slot == -1) { send(session, Map.of("type", "error", "message", "room not found")); return; }
-        if (room.sessions[slot] != null && room.sessions[slot].isOpen()) {
-            send(session, Map.of("type", "error", "message", "already connected")); return;
-        }
+        if (slot == -1) { send(session, Map.of("type", "error", "message", "room full")); return; }
 
         room.sessions[slot] = session;
+        room.playerIds[slot] = username;
         room.disconnectedAt = -1;
+
         String color = slot == 0 ? "black" : "white";
         String turn  = room.turn == 0 ? "black" : "white";
-        send(session, Map.of("type", "reconnected", "color", color, "roomId", roomId,
-                "board", room.board, "turn", turn));
+        send(session, Map.of("type", "joined", "color", color, "roomId", roomId, "board", room.board, "turn", turn));
+
         WebSocketSession opponent = room.sessions[1 - slot];
         if (opponent != null && opponent.isOpen()) send(opponent, Map.of("type", "opponent_back"));
     }
@@ -97,7 +61,6 @@ public class GameRoomService {
     public synchronized void disconnect(WebSocketSession session) throws IOException {
         GameRoom room = findRoom(session);
         if (room == null) return;
-        if (room == waitingRoom) { waitingRoom = null; rooms.remove(room.roomId); return; }
         int slot = room.slotOf(session);
         room.sessions[slot] = null;
         room.disconnectedAt = System.currentTimeMillis();
@@ -108,7 +71,6 @@ public class GameRoomService {
     public synchronized void destroyRoom(String roomId) throws IOException {
         GameRoom room = rooms.remove(roomId);
         if (room == null) return;
-        if (room == waitingRoom) waitingRoom = null;
         room.finished = true;
         for (WebSocketSession s : room.sessions)
             if (s != null && s.isOpen()) send(s, Map.of("type", "opponent_left"));

@@ -8,7 +8,8 @@ public class GameRoom {
     public static final int SIZE = 15;
     public static final int EMPTY = 0, BLACK = 1, WHITE = 2;
 
-    public final String roomId = UUID.randomUUID().toString().substring(0, 8);
+    public final String roomId;
+    public GameRoom(String roomId) { this.roomId = roomId; }
     public final WebSocketSession[] sessions = new WebSocketSession[2]; // 0=black, 1=white
     public final String[] playerIds = new String[2]; // userId per slot
     public final int[][] board = new int[SIZE][SIZE];
