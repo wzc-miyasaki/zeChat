@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>五子棋</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0d0d14;
+    --surface: #16161f;
+    --border: #2a2a3a;
+    --text: #e8e4d9;
+    --muted: #6b6880;
+    --accent: #c9a84c;
+    --accent-dim: #7a6230;
+    --black-piece: #1a1a1a;
+    --white-piece: #f0ece0;
+    --board-bg: #c8a96e;
+    --board-line: rgba(80,50,10,0.55);
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Serif SC', serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    padding: 20px;
+  }
+
+  .game-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+    width: 100%;
+    max-width: 560px;
+  }
+
+  /* Header */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0 4px;
+  }
+  .title {
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: 4px;
+    color: var(--accent);
+    text-shadow: 0 0 20px rgba(201,168,76,0.3);
+  }
+  .room-badge {
+    font-size: 11px;
+    color: var(--muted);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 3px 10px;
+    border-radius: 20px;
+    letter-spacing: 1px;
+  }
+
+  /* Status */
+  .status-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 30px;
+    padding: 8px 20px;
+    font-size: 14px;
+    letter-spacing: 1px;
+    min-width: 220px;
+    justify-content: center;
+    transition: all 0.3s;
+  }
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--muted);
+    flex-shrink: 0;
+    transition: background 0.3s;
+  }
+  .status-dot.active { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+  .status-dot.win    { background: #4caf7d; box-shadow: 0 0 8px #4caf7d; }
+  .status-dot.lose   { background: #e94560; box-shadow: 0 0 8px #e94560; }
+
+  /* Players */
+  .players {
+    display: flex;
+    gap: 12px;
+    width: 100%;
+  }
+  .player-card {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+  .player-card.active {
+    border-color: var(--accent);
+    box-shadow: 0 0 16px rgba(201,168,76,0.15);
+  }
+  .piece-icon {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .piece-icon.black {
+    background: radial-gradient(circle at 35% 35%, #555, #111);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.6), inset 0 1px 2px rgba(255,255,255,0.1);
+  }
+  .piece-icon.white {
+    background: radial-gradient(circle at 35% 35%, #fff, #ccc);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.4), inset 0 1px 2px rgba(255,255,255,0.8);
+  }
+  .player-info { display: flex; flex-direction: column; gap: 2px; }
+  .player-name { font-size: 13px; font-weight: 600; }
+  .player-role { font-size: 11px; color: var(--muted); }
+
+  /* Board */
+  .board-wrap {
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.6), 0 0 0 1px var(--border);
+  }
+  canvas {
+    display: block;
+    cursor: crosshair;
+  }
+
+  /* Restart */
+  .restart-btn {
+    display: none;
+    padding: 10px 32px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-dim));
+    border: none;
+    color: #1a1200;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-family: inherit;
+    font-weight: 600;
+    letter-spacing: 2px;
+    transition: opacity 0.2s, transform 0.1s;
+  }
+  .restart-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+  .restart-btn:active { transform: translateY(0); }
+
+  /* Login overlay */
+  .login-overlay {
+    position: fixed; inset: 0; background: rgba(13,13,20,0.96);
+    display: flex; align-items: center; justify-content: center; z-index: 100;
+  }
+  .login-overlay.hidden { display: none; }
+  .login-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 36px 32px; width: 320px;
+    display: flex; flex-direction: column; gap: 18px;
+  }
+  .login-title { font-size: 20px; font-weight: 600; color: var(--accent); letter-spacing: 3px; text-align: center; }
+  .login-hint  { font-size: 12px; color: var(--muted); text-align: center; line-height: 1.6; }
+  .login-field { display: flex; flex-direction: column; gap: 6px; }
+  .login-field label { font-size: 12px; color: var(--muted); letter-spacing: 1px; }
+  .login-field input {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px 14px; color: var(--text); font-size: 14px; font-family: inherit;
+    outline: none; transition: border-color 0.2s;
+  }
+  .login-field input:focus { border-color: var(--accent); }
+  .login-btn {
+    padding: 11px; background: linear-gradient(135deg, var(--accent), var(--accent-dim));
+    border: none; border-radius: 8px; color: #1a1200; font-size: 14px;
+    font-family: inherit; font-weight: 600; letter-spacing: 2px; cursor: pointer; transition: opacity 0.2s;
+  }
+  .login-btn:hover { opacity: 0.88; }
+  .login-error { font-size: 12px; color: #e94560; text-align: center; min-height: 16px; }
+</style>
+</head>
+<body>
+
+<!-- Login overlay -->
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-card">
+    <div class="login-title">五子棋</div>
+    <div class="login-hint">首次登录自动注册<br>用户名 + 密码即可开始对战</div>
+    <div class="login-field">
+      <label>用户名</label>
+      <input id="loginUser" type="text" placeholder="输入用户名" autocomplete="username">
+    </div>
+    <div class="login-field">
+      <label>密码</label>
+      <input id="loginPass" type="password" placeholder="输入密码" autocomplete="current-password">
+    </div>
+    <div class="login-error" id="loginError"></div>
+    <button class="login-btn" onclick="doLogin()">进入游戏</button>
+  </div>
+</div>
+
+<div class="game-wrap">
+  <div class="header">
+    <div class="title">五子棋</div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <span id="userLabel" style="font-size:12px;color:var(--muted)"></span>
+      <div class="room-badge" id="roomBadge">未连接</div>
+      <button id="logoutBtn" onclick="doLogout()" style="display:none;font-size:11px;padding:3px 10px;border-radius:20px;border:1px solid var(--border);background:var(--surface);color:var(--muted);cursor:pointer;letter-spacing:1px">退出</button>
+    </div>
+  </div>
+
+  <div class="status-bar">
+    <div class="status-dot" id="statusDot"></div>
+    <span id="statusText">连接中...</span>
+  </div>
+
+  <div class="players">
+    <div class="player-card" id="cardBlack">
+      <div class="piece-icon black"></div>
+      <div class="player-info">
+        <div class="player-name" id="nameBlack">黑方</div>
+        <div class="player-role" id="roleBlack">先手</div>
+      </div>
+    </div>
+    <div class="player-card" id="cardWhite">
+      <div class="piece-icon white"></div>
+      <div class="player-info">
+        <div class="player-name" id="nameWhite">白方</div>
+        <div class="player-role" id="roleWhite">后手</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="board-wrap">
+    <canvas id="board"></canvas>
+  </div>
+
+  <button class="restart-btn" id="restartBtn" onclick="newGame()">再来一局</button>
+</div>
+
+<script>
+const SIZE = 15;
+// Responsive cell size
+const maxW = Math.min(window.innerWidth - 40, 520);
+const CELL = Math.floor((maxW - 20) / (SIZE - 1));
+const PAD  = Math.round(CELL * 0.6);
+const W    = PAD * 2 + CELL * (SIZE - 1);
+
+const canvas = document.getElementById('board');
+canvas.width = canvas.height = W;
+const ctx = canvas.getContext('2d');
+
+const statusDot  = document.getElementById('statusDot');
+const statusText = document.getElementById('statusText');
+const roomBadge  = document.getElementById('roomBadge');
+const restartBtn = document.getElementById('restartBtn');
+const cardBlack  = document.getElementById('cardBlack');
+const cardWhite  = document.getElementById('cardWhite');
+const nameBlack  = document.getElementById('nameBlack');
+const nameWhite  = document.getElementById('nameWhite');
+const roleBlack  = document.getElementById('roleBlack');
+const roleWhite  = document.getElementById('roleWhite');
+const loginOverlay = document.getElementById('loginOverlay');
+const loginError   = document.getElementById('loginError');
+const userLabel    = document.getElementById('userLabel');
+
+let myColor = null, myRoomId = null, gameOver = false, myTurn = false;
+let board = Array.from({length: SIZE}, () => new Array(SIZE).fill(0));
+let lastMove = null, pendingMove = null;
+let hoverCell = null;
+let ws = null, reconnectDelay = 500;
+let authToken = null;
+
+// ── Login ─────────────────────────────────────────────────────────────────────
+
+async function doLogout() {
+  if (authToken) {
+    const roomId = localStorage.getItem('gomoku_room');
+    await fetch('/api/game/logout', {
+      method: 'POST',
+      headers: {'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json'},
+      body: JSON.stringify(roomId ? {roomId} : {})
+    }).catch(() => {});
+  }
+  authToken = null;
+  localStorage.removeItem('gomoku_token');
+  localStorage.removeItem('gomoku_username');
+  localStorage.removeItem('gomoku_room');
+  if (ws) { ws.onclose = null; ws.close(); ws = null; }
+  document.getElementById('logoutBtn').style.display = 'none';
+  userLabel.textContent = '';
+  loginOverlay.classList.remove('hidden');
+}
+
+async function doLogin() {
+  const username = document.getElementById('loginUser').value.trim();
+  const password = document.getElementById('loginPass').value;
+  loginError.textContent = '';
+  if (!username || !password) { loginError.textContent = '请填写用户名和密码'; return; }
+  try {
+    const res = await fetch('/api/game/login', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({username, password})
+    });
+    const data = await res.json();
+    if (!res.ok) { loginError.textContent = data.error || '登录失败'; return; }
+    authToken = data.token;
+    localStorage.setItem('gomoku_token', authToken);
+    localStorage.setItem('gomoku_username', data.username);
+    userLabel.textContent = data.username;
+    document.getElementById('logoutBtn').style.display = '';
+    loginOverlay.classList.add('hidden');
+    connect();
+  } catch {
+    loginError.textContent = '网络错误，请重试';
+  }
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !loginOverlay.classList.contains('hidden')) doLogin();
+});
+
+// ── Drawing ──────────────────────────────────────────────────────────────────
+
+function cx(x) { return PAD + x * CELL; }
+function cy(y) { return PAD + y * CELL; }
+
+function drawBoard() {
+  // Wood background
+  const bg = ctx.createLinearGradient(0, 0, W, W);
+  bg.addColorStop(0,   '#d4b07a');
+  bg.addColorStop(0.5, '#c8a96e');
+  bg.addColorStop(1,   '#b8955a');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, W);
+
+  // Subtle grain lines
+  ctx.strokeStyle = 'rgba(160,100,30,0.08)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i < W; i += 6) {
+    ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(W, i + 10); ctx.stroke();
+  }
+
+  // Grid
+  ctx.strokeStyle = 'rgba(80,45,8,0.5)';
+  ctx.lineWidth = 0.8;
+  for (let i = 0; i < SIZE; i++) {
+    ctx.beginPath(); ctx.moveTo(cx(i), cy(0)); ctx.lineTo(cx(i), cy(SIZE-1)); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx(0), cy(i)); ctx.lineTo(cx(SIZE-1), cy(i)); ctx.stroke();
+  }
+
+  // Border frame
+  ctx.strokeStyle = 'rgba(80,45,8,0.7)';
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(cx(0), cy(0), CELL*(SIZE-1), CELL*(SIZE-1));
+
+  // Star points
+  const stars = [[3,3],[3,7],[3,11],[7,3],[7,7],[7,11],[11,3],[11,7],[11,11]];
+  ctx.fillStyle = 'rgba(80,45,8,0.7)';
+  stars.forEach(([r,c]) => {
+    ctx.beginPath();
+    ctx.arc(cx(c), cy(r), Math.max(2.5, CELL*0.08), 0, Math.PI*2);
+    ctx.fill();
+  });
+}
+
+function drawPiece(x, y, color, opts = {}) {
+  const { alpha = 1, scale = 1, isLast = false } = opts;
+  const px = cx(x), py = cy(y);
+  const r = (CELL / 2 - 1) * scale;
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+
+  // Shadow
+  ctx.shadowColor = 'rgba(0,0,0,0.5)';
+  ctx.shadowBlur = 6;
+  ctx.shadowOffsetX = 2;
+  ctx.shadowOffsetY = 3;
+
+  // Piece body
+  const g = ctx.createRadialGradient(px - r*0.3, py - r*0.3, r*0.05, px, py, r);
+  if (color === 1) {
+    g.addColorStop(0, '#5a5a5a');
+    g.addColorStop(0.4, '#222');
+    g.addColorStop(1, '#080808');
+  } else {
+    g.addColorStop(0, '#ffffff');
+    g.addColorStop(0.5, '#e8e4d8');
+    g.addColorStop(1, '#c8c0b0');
+  }
+  ctx.beginPath();
+  ctx.arc(px, py, r, 0, Math.PI * 2);
+  ctx.fillStyle = g;
+  ctx.fill();
+
+  // Highlight
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
+  ctx.shadowOffsetX = 0;
+  ctx.shadowOffsetY = 0;
+  const hl = ctx.createRadialGradient(px - r*0.35, py - r*0.4, 0, px - r*0.2, py - r*0.25, r*0.55);
+  hl.addColorStop(0, color === 1 ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.7)');
+  hl.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.beginPath();
+  ctx.arc(px, py, r, 0, Math.PI * 2);
+  ctx.fillStyle = hl;
+  ctx.fill();
+
+  // Last move marker
+  if (isLast) {
+    ctx.beginPath();
+    ctx.arc(px, py, r * 0.28, 0, Math.PI * 2);
+    ctx.fillStyle = color === 1 ? 'rgba(255,200,80,0.85)' : 'rgba(80,60,20,0.6)';
+    ctx.fill();
+  }
+
+  ctx.restore();
+}
+
+function redraw(hx, hy) {
+  drawBoard();
+  for (let y = 0; y < SIZE; y++)
+    for (let x = 0; x < SIZE; x++)
+      if (board[y][x])
+        drawPiece(x, y, board[y][x], { isLast: lastMove && lastMove[0]===x && lastMove[1]===y });
+
+  // Hover ghost
+  if (hx != null && myTurn && !gameOver && board[hy][hx] === 0) {
+    drawPiece(hx, hy, myColor, { alpha: 0.35 });
+  }
+}
+
+// ── Interaction ───────────────────────────────────────────────────────────────
+
+function toCell(e) {
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = W / rect.width, scaleY = W / rect.height;
+  const px = (e.clientX - rect.left) * scaleX;
+  const py = (e.clientY - rect.top)  * scaleY;
+  const x = Math.round((px - PAD) / CELL);
+  const y = Math.round((py - PAD) / CELL);
+  if (x < 0 || x >= SIZE || y < 0 || y >= SIZE) return null;
+  return [x, y];
+}
+
+canvas.addEventListener('mousemove', e => {
+  const cell = toCell(e);
+  if (!cell) { hoverCell = null; redraw(); return; }
+  const [x, y] = cell;
+  if (!hoverCell || hoverCell[0] !== x || hoverCell[1] !== y) {
+    hoverCell = [x, y];
+    redraw(x, y);
+  }
+});
+
+canvas.addEventListener('mouseleave', () => { hoverCell = null; redraw(); });
+
+canvas.addEventListener('click', e => {
+  if (!myColor || gameOver || !myTurn) return;
+  const cell = toCell(e);
+  if (!cell) return;
+  const [x, y] = cell;
+  if (board[y][x]) return;
+
+  // Optimistic render — draw immediately, no waiting for server
+  board[y][x] = myColor;
+  lastMove = [x, y];
+  myTurn = false;
+  pendingMove = { x, y };
+  redraw();
+  updatePlayerCards(3 - myColor);
+  setStatus('等待对手落子', '');
+
+  send({ type: 'move', x, y });
+});
+
+// ── WebSocket ─────────────────────────────────────────────────────────────────
+
+function send(obj) {
+  if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj));
+}
+
+function connect() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(`${proto}://${location.host}/ws/gomoku`);
+
+  ws.onopen = () => {
+    reconnectDelay = 500;
+    const saved = localStorage.getItem('gomoku_room');
+    send(saved
+      ? { type: 'rejoin', roomId: saved, token: authToken }
+      : { type: 'join', token: authToken });
+  };
+
+  ws.onmessage = e => handle(JSON.parse(e.data));
+
+  ws.onclose = () => {
+    if (!gameOver) {
+      setStatus(`断线，${reconnectDelay/1000}s 后重连...`, '');
+      setTimeout(() => { connect(); reconnectDelay = Math.min(reconnectDelay * 2, 16000); }, reconnectDelay);
+    }
+  };
+
+  ws.onerror = () => ws.close();
+}
+
+// ── Message handling ──────────────────────────────────────────────────────────
+
+function handle(msg) {
+  switch (msg.type) {
+
+    case 'waiting':
+      myRoomId = msg.roomId;
+      localStorage.setItem('gomoku_room', myRoomId);
+      roomBadge.textContent = `房间 ${myRoomId}`;
+      setStatus('等待对手加入...', '');
+      break;
+
+    case 'start':
+      myColor  = msg.color === 'black' ? 1 : 2;
+      myRoomId = msg.roomId;
+      myTurn   = myColor === 1;
+      gameOver = false;
+      board    = Array.from({length: SIZE}, () => new Array(SIZE).fill(0));
+      lastMove = null; pendingMove = null;
+      localStorage.setItem('gomoku_room', myRoomId);
+      roomBadge.textContent = `房间 ${myRoomId}`;
+      restartBtn.style.display = 'none';
+      redraw();
+      updatePlayerCards(myColor === 1 ? 1 : 2);
+      setStatus(myTurn ? '轮到你落子' : '等待对手落子', myTurn ? 'active' : '');
+      break;
+
+    case 'reconnected':
+      myColor  = msg.color === 'black' ? 1 : 2;
+      myRoomId = msg.roomId;
+      board    = msg.board;
+      gameOver = false;
+      pendingMove = null;
+      const turnC = msg.turn === 'black' ? 1 : 2;
+      myTurn = turnC === myColor;
+      roomBadge.textContent = `房间 ${myRoomId} ↺`;
+      redraw();
+      updatePlayerCards(turnC);
+      setStatus(myTurn ? '轮到你落子' : '等待对手落子', myTurn ? 'active' : '');
+      break;
+
+    case 'move': {
+      const c = msg.color === 'black' ? 1 : 2;
+      // Skip if this is our own optimistic move already drawn
+      if (pendingMove && pendingMove.x === msg.x && pendingMove.y === msg.y && c === myColor) {
+        pendingMove = null;
+      } else {
+        board[msg.y][msg.x] = c;
+        lastMove = [msg.x, msg.y];
+        redraw();
+      }
+      myTurn = (c !== myColor);
+      updatePlayerCards(myTurn ? myColor : (3 - myColor));
+      setStatus(myTurn ? '轮到你落子' : '等待对手落子', myTurn ? 'active' : '');
+      break;
+    }
+
+    case 'win': {
+      gameOver = true;
+      const won = (msg.color === 'black' ? 1 : 2) === myColor;
+      setStatus(won ? '你赢了！' : '你输了', won ? 'win' : 'lose');
+      restartBtn.style.display = 'inline-block';
+      localStorage.removeItem('gomoku_room');
+      cardBlack.classList.remove('active');
+      cardWhite.classList.remove('active');
+      break;
+    }
+
+    case 'draw':
+      gameOver = true;
+      setStatus('平局', '');
+      restartBtn.style.display = 'inline-block';
+      localStorage.removeItem('gomoku_room');
+      break;
+
+    case 'opponent_left':
+      setStatus('对手断线，等待重连...', '');
+      break;
+
+    case 'opponent_back':
+      setStatus(myTurn ? '轮到你落子' : '等待对手落子', myTurn ? 'active' : '');
+      break;
+
+    case 'error':
+      if (msg.message === 'room not found') {
+        localStorage.removeItem('gomoku_room');
+        send({ type: 'join' });
+      } else if (pendingMove) {
+        // Roll back optimistic move
+        board[pendingMove.y][pendingMove.x] = 0;
+        lastMove = null; pendingMove = null;
+        myTurn = true;
+        redraw();
+        setStatus('落子无效，请重试', 'active');
+      }
+      break;
+  }
+}
+
+// ── UI helpers ────────────────────────────────────────────────────────────────
+
+function setStatus(text, dotClass) {
+  statusText.textContent = text;
+  statusDot.className = 'status-dot' + (dotClass ? ' ' + dotClass : '');
+}
+
+function updatePlayerCards(activeTurn) {
+  cardBlack.classList.toggle('active', activeTurn === 1);
+  cardWhite.classList.toggle('active', activeTurn === 2);
+  if (myColor) {
+    nameBlack.textContent = myColor === 1 ? '黑方（你）' : '黑方';
+    nameWhite.textContent = myColor === 2 ? '白方（你）' : '白方';
+  }
+  roleBlack.textContent = activeTurn === 1 ? '落子中...' : '等待中';
+  roleWhite.textContent = activeTurn === 2 ? '落子中...' : '等待中';
+}
+
+function newGame() {
+  myColor = null; myRoomId = null; gameOver = false; myTurn = false;
+  board = Array.from({length: SIZE}, () => new Array(SIZE).fill(0));
+  lastMove = null; pendingMove = null;
+  restartBtn.style.display = 'none';
+  cardBlack.classList.remove('active');
+  cardWhite.classList.remove('active');
+  nameBlack.textContent = '黑方'; nameWhite.textContent = '白方';
+  roleBlack.textContent = '先手'; roleWhite.textContent = '后手';
+  localStorage.removeItem('gomoku_room');
+  redraw();
+  send({ type: 'join', token: authToken });
+  setStatus('等待对手加入...', '');
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+redraw();
+authToken = localStorage.getItem('gomoku_token');
+if (authToken) {
+  const username = localStorage.getItem('gomoku_username') || '';
+  userLabel.textContent = username;
+  document.getElementById('logoutBtn').style.display = '';
+  loginOverlay.classList.add('hidden');
+  connect();
+}
+// else: login overlay stays visible, connect() called after doLogin()
+</script>
+</body>
+</html>

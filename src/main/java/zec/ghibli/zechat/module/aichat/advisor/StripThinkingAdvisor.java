@@ -1,18 +1,19 @@
 package zec.ghibli.zechat.module.aichat.advisor;
 
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClientRequest;
 import org.springframework.ai.chat.client.ChatClientResponse;
 import org.springframework.ai.chat.client.advisor.api.*;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.model.ChatResponse;
-import org.springframework.ai.chat.model.Generation;
 import reactor.core.publisher.Flux;
 
 import java.util.regex.Pattern;
 
-@Slf4j
 public class StripThinkingAdvisor implements BaseAdvisor {
+    private static final Logger log = LoggerFactory.getLogger(StripThinkingAdvisor.class);
 
     private static final Pattern THINK_PATTERN =
             Pattern.compile("(?s)<think>.*?</think>\\s*");

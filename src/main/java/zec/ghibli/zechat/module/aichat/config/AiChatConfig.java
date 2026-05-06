@@ -1,5 +1,7 @@
 package zec.ghibli.zechat.module.aichat.config;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.openai.OpenAiChatOptions;
@@ -16,7 +18,7 @@ import java.util.stream.Collectors;
 @Configuration
 @EnableConfigurationProperties(AiChatProp.class)
 public class AiChatConfig {
-
+    private static final Logger log = LoggerFactory.getLogger(AiChatConfig.class);
     @Bean
     public Map<String, ChatClient> chatClients(AiChatProp prop) {
         return prop.getProviders().entrySet().stream()

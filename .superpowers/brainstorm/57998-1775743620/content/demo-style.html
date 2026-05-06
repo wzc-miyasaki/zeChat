@@ -1,0 +1,65 @@
+<h2>Demo 的视觉风格？</h2>
+<p class="subtitle">独立 HTML 文件，核心功能：拖滑块改变宽度，实时看文字折行</p>
+
+<div class="cards">
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background:#0f0f23;padding:16px;border-radius:8px;font-family:system-ui;color:#cdd6f4">
+        <div style="font-size:11px;color:#6c7086;letter-spacing:2px;text-transform:uppercase;margin-bottom:12px">PRETEXT DEMO</div>
+        <div style="display:flex;gap:12px">
+          <div style="flex:1">
+            <textarea style="width:100%;background:#1e1e2e;border:1px solid #313244;color:#cdd6f4;border-radius:6px;padding:8px;font-size:12px;resize:none;height:70px;box-sizing:border-box">AGI 春天到了 🚀&#10;بدأت الرحلة</textarea>
+            <div style="margin-top:8px">
+              <div style="font-size:11px;color:#6c7086;margin-bottom:4px">maxWidth: <span style="color:#89b4fa">240px</span></div>
+              <div style="background:#313244;height:4px;border-radius:2px;position:relative">
+                <div style="background:#89b4fa;width:60%;height:100%;border-radius:2px"></div>
+                <div style="position:absolute;top:-4px;left:60%;width:12px;height:12px;background:#89b4fa;border-radius:50%;transform:translateX(-50%)"></div>
+              </div>
+            </div>
+          </div>
+          <div style="width:1px;background:#313244"></div>
+          <div style="flex:1">
+            <div style="font-size:11px;color:#6c7086;margin-bottom:6px">结果预览</div>
+            <div style="border:1px dashed #313244;padding:8px;border-radius:4px;font-size:12px;color:#cdd6f4;width:140px;word-break:break-word">AGI 春天到了 🚀 بدأت الرحلة</div>
+            <div style="margin-top:8px;font-size:11px;color:#a6e3a1">2 行 · 高度 40px</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A · 深色极简风</h3>
+      <p>深色背景，蓝紫配色，左右分栏：左侧输入+滑块，右侧实时预览</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background:#f8f9fa;padding:16px;border-radius:8px;font-family:system-ui;color:#212529">
+        <div style="font-size:18px;font-weight:700;margin-bottom:2px">pretext playground</div>
+        <div style="font-size:11px;color:#868e96;margin-bottom:12px">text layout · no DOM</div>
+        <div style="background:#fff;border:1px solid #dee2e6;border-radius:8px;padding:10px">
+          <div style="font-size:11px;color:#868e96;margin-bottom:4px">文字内容</div>
+          <div style="background:#f1f3f5;border-radius:4px;padding:6px;font-size:12px;color:#495057">AGI 春天到了 🚀</div>
+        </div>
+        <div style="margin-top:8px;display:flex;gap:8px">
+          <div style="flex:1;background:#e7f5ff;border-radius:6px;padding:8px;text-align:center">
+            <div style="font-size:18px;font-weight:700;color:#1971c2">3</div>
+            <div style="font-size:10px;color:#74c0fc">行数</div>
+          </div>
+          <div style="flex:1;background:#ebfbee;border-radius:6px;padding:8px;text-align:center">
+            <div style="font-size:18px;font-weight:700;color:#2f9e44">72px</div>
+            <div style="font-size:10px;color:#8ce99a">高度</div>
+          </div>
+          <div style="flex:1;background:#fff9db;border-radius:6px;padding:8px;text-align:center">
+            <div style="font-size:18px;font-weight:700;color:#e67700">180px</div>
+            <div style="font-size:10px;color:#ffd43b">宽度</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B · 浅色 Dashboard 风</h3>
+      <p>白色背景，数据卡片，指标突出展示，更像一个工具仪表盘</p>
+    </div>
+  </div>
+</div>

@@ -34,6 +34,7 @@ public class BlockMessageAssembler {
 
             } else if (block instanceof ImageBlock img) {
                 mediaList.add(resolveImage(img));
+                textParts.append("识别图中的文本").append("\n");
 
             } else if (block instanceof FileBlock f) {
                 Path filePath = fileStorageService.getPath(f.fileId());
