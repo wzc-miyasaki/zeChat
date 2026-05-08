@@ -25,8 +25,12 @@ public class GomokuWebSocketHandler extends TextWebSocketHandler {
         JsonNode node = mapper.readTree(message.getPayload());
         String type = node.get("type").asText();
         switch (type) {
-            case "join" -> service.join(session, node.get("username").asText(), node.get("roomId").asText());
-            case "move" -> service.move(session, node.get("x").asInt(), node.get("y").asInt());
+            case "join"            -> service.join(session, node.get("username").asText(), node.get("roomId").asText());
+            case "move"            -> service.move(session, node.get("x").asInt(), node.get("y").asInt());
+            case "restart_request" -> service.restartRequest(session);
+            case "restart_confirm" -> service.restartConfirm(session);
+            case "undo_request"    -> service.undoRequest(session);
+            case "undo_confirm"    -> service.undoConfirm(session);
         }
     }
 

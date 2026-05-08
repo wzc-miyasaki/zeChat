@@ -58,6 +58,41 @@ public class GameRoomService {
         }
     }
 
+    public synchronized void restartRequest(WebSocketSession session) throws IOException {
+        GameRoom room = findRoom(session);
+        if (room == null) return;
+        int slot = room.slotOf(session);
+        room.restartRequestSlot = slot;
+        WebSocketSession opponent = room.sessions[1 - slot];
+        if (opponent != null && opponent.isOpen()) send(opponent, Map.of("type", "restart_ask"));
+    }
+
+    public synchronized void restartConfirm(WebSocketSession session) throws IOException {
+        GameRoom room = findRoom(session);
+        if (room == null || room.restartRequestSlot == -1) return;
+        room.resetBoard();
+        broadcast(room, Map.of("type", "restart", "board", room.board, "turn", "black"));
+    }
+
+    public synchronized void undoRequest(WebSocketSession session) throws IOException {
+        GameRoom room = findRoom(session);
+        if (room == null || room.finished || room.moveHistory.isEmpty()) return;
+        int slot = room.slotOf(session);
+        room.undoRequestSlot = slot;
+        WebSocketSession opponent = room.sessions[1 - slot];
+        if (opponent != null && opponent.isOpen()) send(opponent, Map.of("type", "undo_ask"));
+    }
+
+    public synchronized void undoConfirm(WebSocketSession session) throws IOException {
+        GameRoom room = findRoom(session);
+        if (room == null || room.undoRequestSlot == -1) return;
+        int[] last = room.undoLastMove();
+        if (last == null) return;
+        room.undoRequestSlot = -1;
+        String turn = room.turn == 0 ? "black" : "white";
+        broadcast(room, Map.of("type", "undo", "x", last[0], "y", last[1], "turn", turn));
+    }
+
     public synchronized void disconnect(WebSocketSession session) throws IOException {
         GameRoom room = findRoom(session);
         if (room == null) return;

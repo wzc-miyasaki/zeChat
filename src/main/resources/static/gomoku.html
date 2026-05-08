@@ -146,23 +146,46 @@
     cursor: crosshair;
   }
 
-  /* Restart */
-  .restart-btn {
-    display: none;
-    padding: 10px 32px;
-    background: linear-gradient(135deg, var(--accent), var(--accent-dim));
-    border: none;
-    color: #1a1200;
+  /* Action buttons */
+  .action-btns {
+    display: flex;
+    gap: 10px;
+  }
+  .action-btn {
+    padding: 9px 24px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
     border-radius: 8px;
     cursor: pointer;
-    font-size: 14px;
+    font-size: 13px;
     font-family: inherit;
-    font-weight: 600;
-    letter-spacing: 2px;
-    transition: opacity 0.2s, transform 0.1s;
+    letter-spacing: 1px;
+    transition: border-color 0.2s, color 0.2s;
   }
-  .restart-btn:hover { opacity: 0.9; transform: translateY(-1px); }
-  .restart-btn:active { transform: translateY(0); }
+  .action-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .action-btn.primary {
+    background: linear-gradient(135deg, var(--accent), var(--accent-dim));
+    border-color: transparent; color: #1a1200; font-weight: 600;
+  }
+  .action-btn.primary:hover { opacity: 0.88; color: #1a1200; }
+  /* Ask dialog */
+  .ask-bar {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--accent);
+    border-radius: 10px;
+    padding: 10px 16px;
+    font-size: 13px;
+    width: 100%;
+    justify-content: space-between;
+  }
+  .ask-bar.show { display: flex; }
+  .ask-btns { display: flex; gap: 8px; }
+  .ask-yes { padding: 5px 14px; background: var(--accent); border: none; border-radius: 6px; color: #1a1200; font-size: 12px; cursor: pointer; font-family: inherit; }
+  .ask-no  { padding: 5px 14px; background: transparent; border: 1px solid var(--border); border-radius: 6px; color: var(--muted); font-size: 12px; cursor: pointer; font-family: inherit; }
 
   /* Entry overlay */
   .login-overlay {
@@ -252,25 +275,51 @@
     <canvas id="board"></canvas>
   </div>
 
-  <button class="restart-btn" id="restartBtn" onclick="newGame()">再来一局</button>
+  <div class="ask-bar" id="restartAsk">
+    <span>对手请求重开棋局</span>
+    <div class="ask-btns">
+      <button class="ask-yes" onclick="send({type:'restart_confirm'})">同意</button>
+      <button class="ask-no"  onclick="document.getElementById('restartAsk').classList.remove('show')">拒绝</button>
+    </div>
+  </div>
+  <div class="ask-bar" id="undoAsk">
+    <span>对手请求悔棋</span>
+    <div class="ask-btns">
+      <button class="ask-yes" onclick="send({type:'undo_confirm'})">同意</button>
+      <button class="ask-no"  onclick="document.getElementById('undoAsk').classList.remove('show')">拒绝</button>
+    </div>
+  </div>
+
+  <div class="action-btns">
+    <button class="action-btn" id="undoBtn"    style="display:none" onclick="send({type:'undo_request'})">悔棋</button>
+    <button class="action-btn" id="restartBtn" style="display:none" onclick="send({type:'restart_request'})">重开</button>
+  </div>
 </div>
 
 <script>
 const SIZE = 15;
-// Responsive cell size
-const maxW = Math.min(window.innerWidth - 40, 520);
+// Responsive cell size — larger spacing
+const maxW = Math.min(window.innerWidth - 40, 560);
 const CELL = Math.floor((maxW - 20) / (SIZE - 1));
-const PAD  = Math.round(CELL * 0.6);
+const PAD  = Math.round(CELL * 0.7);
 const W    = PAD * 2 + CELL * (SIZE - 1);
 
 const canvas = document.getElementById('board');
-canvas.width = canvas.height = W;
+const scale  = window.devicePixelRatio || 1;
+canvas.width  = W * scale;
+canvas.height = W * scale;
+canvas.style.width  = W + 'px';
+canvas.style.height = W + 'px';
 const ctx = canvas.getContext('2d');
+ctx.scale(scale, scale);
 
 const statusDot  = document.getElementById('statusDot');
 const statusText = document.getElementById('statusText');
 const roomBadge  = document.getElementById('roomBadge');
 const restartBtn = document.getElementById('restartBtn');
+const undoBtn    = document.getElementById('undoBtn');
+const restartAsk = document.getElementById('restartAsk');
+const undoAsk    = document.getElementById('undoAsk');
 const cardBlack  = document.getElementById('cardBlack');
 const cardWhite  = document.getElementById('cardWhite');
 const nameBlack  = document.getElementById('nameBlack');
@@ -355,12 +404,27 @@ function drawBoard() {
     ctx.arc(cx(c), cy(r), Math.max(2.5, CELL*0.08), 0, Math.PI*2);
     ctx.fill();
   });
+
+  // Coordinates — 1-15, top and left, starting from top-left
+  const fontSize = Math.max(9, Math.round(CELL * 0.28));
+  ctx.font = `${fontSize}px monospace`;
+  ctx.fillStyle = 'rgba(80,45,8,0.65)';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'bottom';
+  for (let i = 0; i < SIZE; i++) {
+    ctx.fillText(i + 1, cx(i), cy(0) - 4);       // top: column numbers
+  }
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  for (let i = 0; i < SIZE; i++) {
+    ctx.fillText(i + 1, cx(0) - 4, cy(i));        // left: row numbers
+  }
 }
 
 function drawPiece(x, y, color, opts = {}) {
   const { alpha = 1, scale = 1, isLast = false } = opts;
   const px = cx(x), py = cy(y);
-  const r = (CELL / 2 - 1) * scale;
+  const r = (CELL / 2 - 2) * scale * 0.82;
 
   ctx.save();
   ctx.globalAlpha = alpha;
@@ -510,7 +574,8 @@ function handle(msg) {
       myTurn = turnC === myColor;
       localStorage.setItem('gomoku_room', myRoomId);
       roomBadge.textContent = `房间 ${myRoomId}`;
-      restartBtn.style.display = 'none';
+      restartBtn.style.display = 'inline-block';
+      undoBtn.style.display = 'inline-block';
       redraw();
       updatePlayerCards(turnC);
       setStatus(myTurn ? '轮到你落子' : '等待对手落子', myTurn ? 'active' : '');
@@ -536,7 +601,7 @@ function handle(msg) {
       gameOver = true;
       const won = (msg.color === 'black' ? 1 : 2) === myColor;
       setStatus(won ? '你赢了！' : '你输了', won ? 'win' : 'lose');
-      restartBtn.style.display = 'inline-block';
+      undoBtn.style.display = 'none';
       localStorage.removeItem('gomoku_room');
       cardBlack.classList.remove('active');
       cardWhite.classList.remove('active');
@@ -546,9 +611,41 @@ function handle(msg) {
     case 'draw':
       gameOver = true;
       setStatus('平局', '');
-      restartBtn.style.display = 'inline-block';
+      undoBtn.style.display = 'none';
       localStorage.removeItem('gomoku_room');
       break;
+
+    case 'restart_ask':
+      restartAsk.classList.add('show'); break;
+
+    case 'restart': {
+      board = msg.board;
+      gameOver = false; lastMove = null; pendingMove = null;
+      const rtc = msg.turn === 'black' ? 1 : 2;
+      myTurn = rtc === myColor;
+      restartAsk.classList.remove('show');
+      undoBtn.style.display = 'inline-block';
+      redraw();
+      updatePlayerCards(rtc);
+      setStatus(myTurn ? '轮到你落子' : '等待对手落子', myTurn ? 'active' : '');
+      break;
+    }
+
+    case 'undo_ask':
+      undoAsk.classList.add('show'); break;
+
+    case 'undo': {
+      board[msg.y][msg.x] = 0;
+      lastMove = null; pendingMove = null;
+      const utc = msg.turn === 'black' ? 1 : 2;
+      myTurn = utc === myColor;
+      gameOver = false;
+      undoAsk.classList.remove('show');
+      redraw();
+      updatePlayerCards(utc);
+      setStatus(myTurn ? '轮到你落子' : '等待对手落子', myTurn ? 'active' : '');
+      break;
+    }
 
     case 'opponent_left':
       setStatus('对手断线，等待重连...', '');
@@ -597,11 +694,16 @@ function newGame() {
   board = Array.from({length: SIZE}, () => new Array(SIZE).fill(0));
   lastMove = null; pendingMove = null;
   restartBtn.style.display = 'none';
+  undoBtn.style.display = 'none';
+  restartAsk.classList.remove('show');
+  undoAsk.classList.remove('show');
   cardBlack.classList.remove('active');
   cardWhite.classList.remove('active');
   nameBlack.textContent = '黑方'; nameWhite.textContent = '白方';
   roleBlack.textContent = '先手'; roleWhite.textContent = '后手';
   localStorage.removeItem('gomoku_room');
+  myRoomId = null;
+  if (ws) { ws.onclose = null; ws.close(); ws = null; }
   redraw();
   loginOverlay.classList.remove('hidden');
 }
